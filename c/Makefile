@@ -10,7 +10,7 @@ BIN_DIR=./bin
 
 .PHONY: async sync mqtt tcp udp
 
-all: mqtt tcp udp
+all: mqtt tcp udp mmap
 
 mqtt: $(CLIENT) $(SERVER)
 	if [ ! -d $(BIN_DIR) ]; then mkdir -p $(BIN_DIR); fi
@@ -30,6 +30,12 @@ udp:
 	if [ ! -d $(BIN_DIR) ]; then mkdir -p $(BIN_DIR); fi
 	$(CC) -o $(BIN_DIR)/udp-client $(CFLAGS) udp_client.c $(BENCHMARKER) $(LIBS)
 	$(CC) -o $(BIN_DIR)/udp-server $(CFLAGS) udp_server.c $(BENCHMARKER) $(LIBS)
+
+mmap:
+	if [ ! -d $(BIN_DIR) ]; then mkdir -p $(BIN_DIR); fi
+	$(CC) -o $(BIN_DIR)/mmap-client $(CFLAGS) mmap_client.c $(BENCHMARKER) $(LIBS)
+	$(CC) -o $(BIN_DIR)/mmap-server $(CFLAGS) mmap_server.c $(BENCHMARKER) $(LIBS)
+    
 
 debug:
 	if [ ! -d $(BIN_DIR) ]; then mkdir -p $(BIN_DIR); fi

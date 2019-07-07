@@ -13,6 +13,7 @@
   "license": "MIT",
   "dependencies": {
     "dgram": "^1.0.1",
+    "mmap-object": "^1.4.1",
     "mqtt": "^3.0.0",
     "net": "^1.0.2",
     "sleep": "^6.1.0"
