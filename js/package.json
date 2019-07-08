@@ -13,6 +13,7 @@
   "license": "MIT",
   "dependencies": {
     "dgram": "^1.0.1",
+    "fs-ext": "^1.3.0",
     "mmap-io": "^1.1.0",
     "mmap-object": "^1.4.1",
     "mmap.js": "^1.0.3",

@@ -6,13 +6,14 @@ const file = "/tmp/mmapbenchmark.bin";
 const MESSAGE_SIZE=100
 
 
-const MESSAGE_CONTENT= "hello server\n"
+const MESSAGE_CONTENT= "hello server\n\0\0\0\0"
 const CONNECTION_MADE_STR= "connection_made\n"
 
 var RECV_CONTENT = Buffer.alloc(MESSAGE_SIZE);
 RECV_CONTENT.write("hello client\n");
 
 const fd = fs.openSync(file, 'r+');
+
 const fileBuf = mmap.alloc(
     MESSAGE_SIZE,
     mmap.PROT_READ | mmap.PROT_WRITE,

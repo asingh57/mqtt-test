@@ -1,5 +1,7 @@
 # mqtt-test
 
+The following are benchmarks for inter process communication between JavaScript and C programs
+
 All the tests mentioned were run on a PC with the following specs:
 
 ```
@@ -42,6 +44,13 @@ Average time is 0.000019621 second(s) for 100000 iterations
 Average round-trip per second: 50965 (rt/s)
 ```
 
+#### JS client to JS server
+```
+Total time elapsed: 3.805723140 seconds
+Average time is 0.000038057 second(s) for 100000 iterations
+Average round-trip per second: 26276 (rt/s)
+```
+
 ## MMAP test
 
 #### C client to C server
@@ -53,13 +62,19 @@ Average round-trip per second: 1736111 (rt/s)
 
 #### JS client to C server
 
-NOTE: The mmap library appears to choke completely if more than 10000 iterations are done
-
+NOTE: The mmap.io JS library appears to choke completely if more than 10000 iterations are done
+```
 Total time elapsed: 0.011517272 seconds
 Average time is 0.000001151 second(s) for 10000 iterations
 Average round-trip per second: 868809 (rt/s)
+```
 
-
+#### JS client to JS server
+```
+Total time elapsed: 0.013514342 seconds
+Average time is 0.000001351 second(s) for 10000 iterations
+Average round-trip per second: 740192 (rt/s)
+```
 
 
 
