@@ -31,7 +31,7 @@ static char * str_devname= "lo";
 static int c_packet_sz   = SIZE;
 static int c_packet_nb   = 1;
 static int c_buffer_sz   = 1024*8;
-static int c_buffer_nb   = 1024;
+static int c_buffer_nb   = 1;
 static int c_sndbuf_sz   = 0;
 static int c_mtu         = 0;
 static int c_send_mask   = 127;
@@ -172,17 +172,6 @@ int main( int argc, char ** argv )
 	}
  
  
-	/* change send buffer size */
-	if(c_sndbuf_sz) {
-		printf("send buff size = %d\n", c_sndbuf_sz);
-		if (setsockopt(fd_socket, SOL_SOCKET, SO_SNDBUF, &c_sndbuf_sz,
-					sizeof(c_sndbuf_sz))< 0)
-		{
-			perror("getsockopt: SO_SNDBUF");
-			return EXIT_FAILURE;
-		}
-	}
- 
 	/* get data offset */
 			data_offset = TPACKET_HDRLEN - sizeof(struct sockaddr_ll);
 	printf("data offset = %d bytes\n", data_offset);
@@ -194,20 +183,6 @@ int main( int argc, char ** argv )
 		perror("mmap");
 		return EXIT_FAILURE;
 	}
- 
- 
-	/* fill peer sockaddr for SOCK_DGRAM */
-	if (mode_dgram)
-	{
-		char dstaddr[ETH_ALEN] = {0xff,0xff,0xff,0xff,0xff,0xff};
-		peer_addr.sll_family = AF_PACKET;
-		peer_addr.sll_protocol = htons(ETH_P_IP);
-		peer_addr.sll_ifindex = i_ifindex;
-		peer_addr.sll_halen = ETH_ALEN;
-		memcpy(&peer_addr.sll_addr, dstaddr, ETH_ALEN);
-		ps_sockaddr = &peer_addr;
-	}
- 
  
 	/* Set thread priorities, scheduler, ... */
 	pthread_attr_init(&t_attr_send);
