@@ -35,15 +35,15 @@ struct ring {
 	struct tpacket_req3 req;
 };
 
+int read_offset=147;
+
+char read_string[50]="client sent packet";
+
 static unsigned long packets_total = 0, bytes_total = 0;
-static sig_atomic_t sigint = 0;
 
-static void sighandler(int num)
-{
-	sigint = 1;
-}
 
-static int setup_socket(struct ring *ring, char *netdev)
+
+static int setup_socket_recv(struct ring *ring, char *netdev)
 {
 	int err, i, fd, v = TPACKET_V3;
 	struct sockaddr_ll ll;
@@ -170,8 +170,19 @@ static void teardown_socket(struct ring *ring, int fd)
 	close(fd);
 }
 
+
+int send_reply(){
+
+    printf("eq\n");
+    return 0;
+}
+
+
+
 int main(int argc, char **argp)
 {
+
+    
 	int fd, err;
 	socklen_t len;
 	struct ring ring;
@@ -181,10 +192,9 @@ int main(int argc, char **argp)
 	struct tpacket_stats_v3 stats;
 
 
-	signal(SIGINT, sighandler);
 
 	memset(&ring, 0, sizeof(ring));
-	fd = setup_socket(&ring, "lo");
+	fd = setup_socket_recv(&ring, "lo");
 	assert(fd > 0);
 
 	memset(&pfd, 0, sizeof(pfd));
@@ -192,7 +202,7 @@ int main(int argc, char **argp)
 	pfd.events = POLLIN | POLLERR;
 	pfd.revents = 0;
 
-	while (likely(!sigint)) {
+	while (1==1) {
 		pbd = (struct block_desc *) ring.rd[block_num].iov_base;
 
 		if ((pbd->h1.block_status & TP_STATUS_USER) == 0) {
@@ -203,15 +213,13 @@ int main(int argc, char **argp)
 
         char * recv= (char *) pbd;
 
-        for(int i=147;i<165;i++){
 
-            printf("%c",ring.map[i]);
+        if(strncmp(ring.map+read_offset,read_string,13)==0){
+            send_reply();
+                
         }
-        printf("\n");//ring->map
-
-		walk_block(pbd, block_num);
 		flush_block(pbd);
-		block_num = (block_num + 1) % blocks;
+
 	}
 
 	len = sizeof(stats);
