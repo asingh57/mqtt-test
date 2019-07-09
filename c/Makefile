@@ -1,6 +1,6 @@
 # Compiler
 CC=gcc
-LIBS=-lpaho-mqtt3c -lpaho-mqtt3a -lpaho-mqtt3as -lm
+LIBS=-lpaho-mqtt3c -lpaho-mqtt3a -lpaho-mqtt3as -lm -lpthread
 CFLAGS=-g -Wall
 BENCHMARKER=benchmark.c
 MQTT_CLIENT=mqtt_client.c
@@ -10,7 +10,7 @@ BIN_DIR=./bin
 
 .PHONY: async sync mqtt tcp udp
 
-all: mqtt tcp udp mmap
+all: mqtt tcp udp mmap p_mmap
 
 mqtt: $(CLIENT) $(SERVER)
 	if [ ! -d $(BIN_DIR) ]; then mkdir -p $(BIN_DIR); fi
@@ -35,7 +35,13 @@ mmap:
 	if [ ! -d $(BIN_DIR) ]; then mkdir -p $(BIN_DIR); fi
 	$(CC) -o $(BIN_DIR)/mmap-client $(CFLAGS) mmap_client.c $(BENCHMARKER) $(LIBS)
 	$(CC) -o $(BIN_DIR)/mmap-server $(CFLAGS) mmap_server.c $(BENCHMARKER) $(LIBS)
-    
+   
+
+p_mmap:
+	if [ ! -d $(BIN_DIR) ]; then mkdir -p $(BIN_DIR); fi
+	$(CC) -o $(BIN_DIR)/packet-mmap-client $(CFLAGS) packet_mmap_client.c $(BENCHMARKER) $(LIBS)
+	$(CC) -o $(BIN_DIR)/packet-mmap-server $(CFLAGS) packet_mmap_server.c $(BENCHMARKER) $(LIBS)
+     
 
 debug:
 	if [ ! -d $(BIN_DIR) ]; then mkdir -p $(BIN_DIR); fi

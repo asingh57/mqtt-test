@@ -1,5 +1,3 @@
-
-
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -24,11 +22,9 @@
 #include <poll.h>
 #include <pthread.h>
  
-#define SIZE 500
-
 /* params */
-static char * str_devname= "lo";
-static int c_packet_sz   = SIZE;
+static char * str_devname= NULL;
+static int c_packet_sz   = 100;
 static int c_packet_nb   = 1;
 static int c_buffer_sz   = 1024*8;
 static int c_buffer_nb   = 1024;
@@ -37,7 +33,7 @@ static int c_mtu         = 0;
 static int c_send_mask   = 127;
 static int c_error       = 0;
 static int mode_dgram    = 0;
-static int mode_thread   = 0;
+static int mode_thread   = 1;
 static int mode_loss     = 0;
 static int mode_verbose  = 0;
  
@@ -51,10 +47,84 @@ struct tpacket_req s_packet_req;
  
 void *task_send(void *arg);
 void *task_fill(void *arg);
-
-char tmp[SIZE]="\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\x00\x45\x00 client sent packet";
-
-
+ 
+static void usage()
+{
+  fprintf( stderr,
+           "Usage: ./packet_mmap [OPTION] [INTERFACE]\n"
+	   " -h\tshow this help\n"
+           " -g\tuse SOCK_DGRAM\n"
+           " -t\tuse dual thread\n"
+           " -s\tset packet size\n"
+           " -c\tset packet count\n"
+           " -m\tset mtu\n"
+           " -b\tset buffer size\n"
+           " -n\tset buffer count\n"
+           " -j\tset send() period (mask==0)\n"
+           " -z\tset socket buffer size\n"
+           " -l\tdiscard wrong packets\n"
+           " -e\tgenerate error [num]\n"
+           " -v\tbe verbose\n"
+           );
+}
+ 
+void getargs( int argc, char ** argv )
+{
+  int c;
+  opterr = 0;
+  while( (c = getopt( argc, argv, "e:s:m:b:B:n:c:z:j:vhgtl"))!= EOF) {
+    switch( c ) {
+    case 's': c_packet_sz = strtoul( optarg, NULL, 0 ); break;
+    case 'c': c_packet_nb = strtoul( optarg, NULL, 0 ); break;
+    case 'b': c_buffer_sz = strtoul( optarg, NULL, 0 ); break;
+    case 'n': c_buffer_nb = strtoul( optarg, NULL, 0 ); break;
+    case 'z': c_sndbuf_sz = strtoul( optarg, NULL, 0 ); break;
+    case 'm': c_mtu       = strtoul( optarg, NULL, 0 ); break;
+    case 'j': c_send_mask = strtoul( optarg, NULL, 0 ); break;
+    case 'e': c_error     = strtoul( optarg, NULL, 0 ); break;
+    case 'g': mode_dgram  = 1;                          break;
+    case 't': mode_thread = 0;                          break;
+    case 'l': mode_loss   = 1;                          break;
+    case 'v': mode_verbose= 1;                          break;
+    case 'h': usage(); exit( EXIT_FAILURE );            break;
+    case '?':
+      if ( isprint (optopt) ) {
+        fprintf ( stderr,
+                  "ERROR: unrecognised option \"%c\"\n",
+                  (char) optopt );
+        exit( EXIT_FAILURE );
+      }
+      break;
+    default:
+      fprintf( stderr, "ERROR: unrecognised command line option\n");
+      exit( EXIT_FAILURE );
+      break;
+    }
+  }
+  /* take first residual non option argv element as interface name. */
+  if ( optind < argc ) {
+    str_devname = argv[ optind ];
+  }
+ 
+  if( !str_devname ) {
+    fprintf( stderr, "ERROR: No interface was specified\n");
+    usage();
+    exit( EXIT_FAILURE );
+  }
+ 
+  printf( "CURRENT SETTINGS:\n" );
+  printf( "str_devname:       %s\n", str_devname );
+  printf( "c_packet_sz:       %d\n", c_packet_sz );
+  printf( "c_buffer_sz:       %d\n", c_buffer_sz );
+  printf( "c_buffer_nb:       %d\n", c_buffer_nb );
+  printf( "c_packet_sz count: %d\n", c_packet_sz );
+  printf( "c_packet_nb count: %d\n", c_packet_nb );
+  printf( "c_mtu:             %d\n", c_mtu );
+  printf( "c_send_mask:       %d\n", c_send_mask );
+  printf( "c_sndbuf_sz:       %d\n", c_sndbuf_sz );
+  printf( "mode_loss:         %d\n", mode_loss );
+  printf( "mode_thread:       %d\n", mode_thread );
+}
  
 int main( int argc, char ** argv )
 {
@@ -77,7 +147,8 @@ int main( int argc, char ** argv )
 	struct sched_param para_send,para_fill;
 	pthread_t t_send, t_fill;
  
-
+	/* get configuration */
+	getargs( argc, argv );
  
 	printf("\nSTARTING TEST:\n");
  
@@ -199,7 +270,7 @@ int main( int argc, char ** argv )
 	/* fill peer sockaddr for SOCK_DGRAM */
 	if (mode_dgram)
 	{
-		char dstaddr[ETH_ALEN] = {0xff,0xff,0xff,0xff,0xff,0xff};
+		char dstaddr[ETH_ALEN] = {0x00,0x00,0x00,0x00,0x00,0x00};
 		peer_addr.sll_family = AF_PACKET;
 		peer_addr.sll_protocol = htons(ETH_P_IP);
 		peer_addr.sll_ifindex = i_ifindex;
@@ -295,9 +366,11 @@ void *task_send(void *arg) {
 		/* send all buffers with TP_STATUS_SEND_REQUEST */
 		/* Wait end of transfer */
 		if(mode_verbose) printf("send() start\n");
+
+        char buff[100]="fff\n";
 		ec_send = sendto(fd_socket,
-				NULL,
-				0,
+				buff,
+				1,
 				(blocking? 0 : MSG_DONTWAIT),
 				(struct sockaddr *) ps_sockaddr,
 				sizeof(struct sockaddr_ll));
@@ -351,7 +424,7 @@ void *task_fill(void *arg) {
 					/* fill data in buffer */
 					if(first_loop) {
 						for(j=0;j<c_packet_sz;j++)
-							data[j] = tmp[j];
+							data[j] = "a";
 					}
 					loop = 0;
 				break;
@@ -420,7 +493,3 @@ void *task_fill(void *arg) {
 	}
 	printf("end of task fill()\n");
 }
-
-
-
-
