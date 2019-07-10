@@ -22,8 +22,8 @@
 #include <sys/select.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
-
-
+#include <pthread.h>
+#include "./benchmark.h"
 
 #ifndef likely
 # define likely(x)		__builtin_expect(!!(x), 1)
@@ -59,8 +59,10 @@ volatile struct tpacket_hdr * tx_ps_header_start;
 volatile int shutdown_flag = 0;
 struct tpacket_req s_packet_req;
 
-char tmp[PACKET_SZ]="\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\x00\x45\x00 client sent packet";
+char tmp[PACKET_SZ]="\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\x00\x45\x00 client sent packet\n";
 
+long int send_iter=5;
+long int recv_iter=5;
 
 
 struct block_desc {
@@ -77,9 +79,8 @@ struct ring {
 
 int read_offset=147;
 
-char read_string[50]="server sent packet";
+char read_string[50]="server sent packet\n";
 
-static unsigned long packets_total = 0, bytes_total = 0;
 
 
 
@@ -172,10 +173,10 @@ static void display(struct tpacket3_hdr *ppd)
 		getnameinfo((struct sockaddr *) &sd, sizeof(sd),
 			    dbuff, sizeof(dbuff), NULL, 0, NI_NUMERICHOST);
 
-		printf("%s -> %s, ", sbuff, dbuff);
+		//printf("%s -> %s, ", sbuff, dbuff);
 	}
 
-	printf("rxhash: 0x%x\n", ppd->hv1.tp_rxhash);
+	//printf("rxhash: 0x%x\n", ppd->hv1.tp_rxhash);
 }
 
 static void walk_block(struct block_desc *pbd, const int block_num)
@@ -194,8 +195,7 @@ static void walk_block(struct block_desc *pbd, const int block_num)
 					       ppd->tp_next_offset);
 	}
 
-	packets_total += num_pkts;
-	bytes_total += bytes;
+
 }
 
 static void flush_block(struct block_desc *pbd)
@@ -213,22 +213,25 @@ static void teardown_socket(struct ring *ring, int fd)
 
 int send_reply(){
 
-    printf("eq\n");
+    //printf("eq\n");
     return 0;
 }
 
 /* This task will call send() procedure */
 void *task_send(void *arg) {
 	int ec_send;
-	static int total=0;
+
 	int blocking = (int) arg;
  
  
+    start_clock();
 	do
 	{
 		/* send all buffers with TP_STATUS_SEND_REQUEST */
 		/* Wait end of transfer */
 
+
+        
 		ec_send = sendto(tx_fd_socket,
 				NULL,
 				0,
@@ -243,27 +246,30 @@ void *task_send(void *arg) {
 		else if ( ec_send == 0 ) {
 			/* nothing to do => schedule : useful if no SMP */
 
-            printf("aaa\n");
+            //printf("aaa\n");
 			usleep(0);
 		}
 		else {
 
-			total += ec_send/(c_packet_sz);
-			printf("send %d packets (+%d bytes)\n",total, ec_send);
 			fflush(0);
             break;
 		}
  
 	} while(1==1);
  
-	if(blocking) printf("end of task send()\n");
-	//printf("end of task send(ec=%x)\n", ec_send);
+	if(blocking) //printf("end of task send()\n");
+	////printf("end of task send(ec=%x)\n", ec_send);
  
 	return (void*) ec_send;
 }
 
 /* This task will fill circular buffer */
-void task_fill() {
+void *task_fill() {
+
+   
+while(1==1){
+     ////printf("sending %ld",send_iter);
+    fflush(0);
 	int i,j;
 	int i_index = 0;
 	char * data;
@@ -286,14 +292,25 @@ void task_fill() {
 				case TP_STATUS_AVAILABLE:
 					/* fill data in buffer */
 					if(first_loop) {
-						for(j=0;j<c_packet_sz;j++)
+						for(j=0;j<c_packet_sz;j++){
 							data[j] = tmp[j];
+
+						if(tmp[j]=='\n'){
+                            //printf("updating sending ct %ld\n",send_iter);
+                           ////printf("expect recv ct %ld\n",recv_iter);
+                            tmp[j+1] = (int)((send_iter >> 24) & 0xFF) ;
+                            tmp[j+2] = (int)((send_iter >> 16) & 0xFF) ;
+                            tmp[j+3] = (int)((send_iter >> 8) & 0XFF);
+                            tmp[j+4] = (int)((send_iter & 0XFF));
+
+                        }
+						}
 					}
 					loop = 0;
 				break;
  
 				case TP_STATUS_WRONG_FORMAT:
-					printf("An error has occured during transfer\n");
+					//printf("An error has occured during transfer\n");
 					exit(EXIT_FAILURE);
 				break;
  
@@ -333,7 +350,7 @@ void task_fill() {
 			if(i == (c_packet_nb/2))
 			{
 				int ec_close;
-				if(mode_verbose) printf("close() start\n");
+				if(mode_verbose) //printf("close() start\n");
  
 				if(c_error == 1) {
 					ec_close = close(tx_fd_socket);
@@ -349,14 +366,24 @@ void task_fill() {
 						//return EXIT_FAILURE;
 					}
 				}
-				if(mode_verbose) printf("close end (ec:%d)\n",ec_close);
+				if(mode_verbose) //printf("close end (ec:%d)\n",ec_close);
 				break;
 			}
 		}
 	}
-	printf("end of task fill()\n");
+
+}
+	////printf("end of task fill()\n");
 }
 
+void init_str_ct(){
+    //printf("expected: %ld sent %ld\n",recv_iter, send_iter);
+    read_string[19] = (int)((recv_iter >> 24) & 0xFF) ;
+    read_string[19+1] = (int)((recv_iter >> 16) & 0xFF) ;
+    read_string[19+2] = (int)((recv_iter >> 8) & 0XFF);
+    read_string[19+3] = (int)((recv_iter & 0XFF));
+
+}
 
 
 
@@ -364,6 +391,7 @@ void task_fill() {
 int main(int argc, char **argp)
 {
 
+    
     tx_fd_socket = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 	if(tx_fd_socket == -1)
 	{
@@ -432,7 +460,7 @@ int main(int argc, char **argp)
  
 	/* get data offset */
 			data_offset = TPACKET_HDRLEN - sizeof(struct sockaddr_ll);
-	printf("data offset = %d bytes\n", data_offset);
+	//printf("data offset = %d bytes\n", data_offset);
  
 	/* mmap Tx ring buffers memory */
 	tx_ps_header_start = mmap(0, size, PROT_READ|PROT_WRITE, MAP_SHARED, tx_fd_socket, 0);
@@ -459,20 +487,55 @@ int main(int argc, char **argp)
 	pfd.events = POLLIN | POLLERR;
 	pfd.revents = 0;
 
-    int turn=0;
+
+    init_str_ct();
+
+
+
+
+    pthread_t thread1;
+    pthread_create(&thread1, NULL, task_fill, NULL);
+    //pthread_join(thread1, &thread1_result);
+
 	while (1==1) {
 		pbd = (struct block_desc *) ring.rd[block_num].iov_base;
 
-        if(strncmp(ring.map+read_offset,read_string,13)==0||turn==0){
-            task_fill();
-            turn=1;
+        if((strncmp((ring.map+read_offset),read_string,19)==0)){
+            long int ret=( (ring.map+read_offset)[19] << 24) 
+                   + ((ring.map+read_offset)[19+1] << 16) 
+                   + ((ring.map+read_offset)[19+2] << 8) 
+                   + ((ring.map+read_offset)[19+3] ) ;
+            
+            //printf("ret val recv=%ld, expected %ld\n",ret,recv_iter);
+            if(ret!=recv_iter){
+                continue;
+            }
+            stop_clock();
+            print_result(0);
+            
+            usleep(1000);
+            //printf("\n\n\n\n\n\n\nALL GOOD \n\n\n\n\n\n\n");
+            recv_iter+=1;
+            send_iter+=1; 
+            init_str_ct();
+
+        }
+        else{
+            long int ret=( (ring.map+read_offset)[19] << 24) 
+                   + ((ring.map+read_offset)[19+1] << 16) 
+                   + ((ring.map+read_offset)[19+2] << 8) 
+                   + ((ring.map+read_offset)[19+3] ) ;
+            ////printf("\n string and long int recv: %s %ld\n",ring.map+read_offset,ret);
         }
 
 		if ((pbd->h1.block_status & TP_STATUS_USER) == 0) {
+            
 			poll(&pfd, 1, -1);
+            fflush(0);
 			continue;
 		}
-        
+
+               
 		flush_block(pbd);
 
 	}
