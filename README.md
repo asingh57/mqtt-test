@@ -52,30 +52,11 @@ Average round-trip per second: 26276 (rt/s)
 ```
 
 ## MMAP test
-
+##documentation of MMAP is severely lacking. Possible that my program is unoptimised
 #### C client to C server
 ```
-Total time elapsed: 0.057626285 seconds
-Average time is 0.000000576 seconds(s) for 100000 iterations
-Average round-trip per second: 1736111 (rt/s)
+time for 1 round trip= 0.001092288
 ```
-
-#### JS client to C server
-
-NOTE: The mmap.io JS library appears to choke completely if more than 10000 iterations are done
-```
-Total time elapsed: 0.011517272 seconds
-Average time is 0.000001151 second(s) for 10000 iterations
-Average round-trip per second: 868809 (rt/s)
-```
-
-#### JS client to JS server
-```
-Total time elapsed: 0.013514342 seconds
-Average time is 0.000001351 second(s) for 10000 iterations
-Average round-trip per second: 740192 (rt/s)
-```
-
 
 
 
