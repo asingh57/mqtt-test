@@ -224,7 +224,7 @@ void *task_send(void *arg) {
 	int blocking = (int) arg;
  
  
-    start_clock();
+    //s();
 	do
 	{
 		/* send all buffers with TP_STATUS_SEND_REQUEST */
@@ -265,7 +265,7 @@ void *task_send(void *arg) {
 
 /* This task will fill circular buffer */
 void *task_fill() {
-
+start_clock();
    
 while(1==1){
      ////printf("sending %ld",send_iter);
@@ -510,6 +510,7 @@ int main(int argc, char **argp)
             if(ret!=recv_iter){
                 continue;
             }
+            
             stop_clock();
             print_result(0);
             
